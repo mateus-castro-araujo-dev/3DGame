@@ -38,14 +38,7 @@ public class ModeSwitcher : MonoBehaviour
     void ApplyMode()
     {
         RenderSettings.ambientLight = InMemoryMode ? memoryAmbient : normalAmbient;
-
-        foreach (GameObject echo in GameObject.FindGameObjectsWithTag("MemoryEcho"))
-        {
-            Renderer r = echo.GetComponent<Renderer>();
-            if (r != null) r.enabled = InMemoryMode;
-            // Textos de pista (TextMesh) também
-            TextMesh t = echo.GetComponent<TextMesh>();
-            if (t != null) t.gameObject.GetComponent<MeshRenderer>().enabled = InMemoryMode;
-        }
+        // A visibilidade dos ecos (MemoryEcho) é controlada pelo GameManager, que
+        // combina "Modo Memória" com "sala atual" — assim você só vê a pista da sua fase.
     }
 }

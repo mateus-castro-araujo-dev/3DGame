@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Collections;
+using System.Collections.Generic;
 
 // Gerencia o fluxo do jogo: briefing com contagem regressiva (jogador congelado),
 // respawn, mensagens na tela e vitória.
@@ -21,6 +22,9 @@ public class GameManager : MonoBehaviour
     public GameObject winPanel;
     public Image flashImage; // flash azul ao teletransportar
 
+    [Tooltip("Distância entre os centros das salas no eixo X (igual ao ROOM_SPACING do SceneBuilder)")]
+    public float roomSpacing = 80f;
+
     Transform currentSpawn;
     int roomNumber = 1;
 
@@ -36,6 +40,67 @@ public class GameManager : MonoBehaviour
         if (winPanel != null) winPanel.SetActive(false);
         if (briefingPanel != null) briefingPanel.SetActive(false);
         SetPrompt(""); // o "CENA X/3" aparece após o briefing
+        IndexRoomLabels(); // só os textos da sala atual ficam visíveis
+    }
+
+    // ---- Visibilidade dos textos por sala ----
+    // Os textos 3D (TextMesh: título, eco do briefing, marcadores) usam o shader
+    // "GUI/Text Shader", que tem Fog desligado. Por isso a névoa esconde a geometria
+    // das outras salas, mas NÃO os textos. Solução: mostrar só os textos da sala atual.
+    struct RoomLabel
+    {
+        public MeshRenderer renderer;
+        public int room;
+        public bool isEcho; // pista azul, só aparece no Modo Memória [Q]
+    }
+
+    readonly List<RoomLabel> roomLabels = new List<RoomLabel>();
+    int shownRoom = -1;
+    bool shownMemoryMode;
+
+    void IndexRoomLabels()
+    {
+        roomLabels.Clear();
+        foreach (TextMesh tm in FindObjectsByType<TextMesh>(FindObjectsSortMode.None))
+        {
+            MeshRenderer mr = tm.GetComponent<MeshRenderer>();
+            if (mr == null) continue;
+            roomLabels.Add(new RoomLabel
+            {
+                renderer = mr,
+                room = RoomIndexAt(tm.transform.position.x),
+                isEcho = tm.CompareTag("MemoryEcho")
+            });
+        }
+        shownRoom = -1; // força aplicar na primeira atualização
+        UpdateLabelVisibility();
+    }
+
+    int RoomIndexAt(float worldX)
+    {
+        return Mathf.Max(0, Mathf.RoundToInt(worldX / roomSpacing));
+    }
+
+    void UpdateLabelVisibility()
+    {
+        if (player == null || roomLabels.Count == 0) return;
+
+        int currentRoom = RoomIndexAt(player.position.x);
+        bool memoryMode = ModeSwitcher.Instance != null && ModeSwitcher.Instance.InMemoryMode;
+        if (currentRoom == shownRoom && memoryMode == shownMemoryMode) return;
+
+        foreach (RoomLabel label in roomLabels)
+        {
+            if (label.renderer == null) continue;
+            label.renderer.enabled = label.room == currentRoom && (!label.isEcho || memoryMode);
+        }
+        shownRoom = currentRoom;
+        shownMemoryMode = memoryMode;
+    }
+
+    void Update()
+    {
+        UpdateLabelVisibility();
     }
 
     void SetObjective()
