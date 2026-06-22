@@ -1,10 +1,10 @@
-# EcoDefender 🌱♻️
+# Rescue Protocol 🚑🧠
 
-Jogo 2D educacional sobre reciclagem, desenvolvido em Unity 6.
+Jogo 3D educacional sobre primeiros socorros, desenvolvido em Unity.
 
 > Disciplina: Desenvolvimento de Jogos e Realidade Virtual — IFPI Campus Parnaíba
 > Professor: Denylson Melo
-> Trabalho 03 — Protótipo de Jogo 2D · Grupo 05
+> Trabalho 03 — Protótipo de Jogo 3D · Grupo 05
 
 ## 👥 Integrantes do grupo
 
@@ -14,69 +14,56 @@ Jogo 2D educacional sobre reciclagem, desenvolvido em Unity 6.
 
 ## 🎮 Sobre o jogo
 
-Lixo cai do céu sobre a cidade. O jogador defende a cidade coletando cada resíduo e entregando na lixeira de reciclagem correta antes que ele grude no chão e polua o ambiente. Cada lixo que gruda reduz a saúde da cidade — se ela chegar a 0%, é fim de jogo.
+O jogador participa de um treinamento de resgate e primeiros socorros. Em cada sala, uma "vítima" precisa ser salva: é preciso memorizar um protocolo de ações e executá-las na ordem correta, antes que as paredes da sala terminem de se fechar e esmaguem o jogador.
 
-Entre as ondas há uma fase de preparação, na qual o jogador gasta as moedas ganhas reciclando para comprar e posicionar unidades (coletores, ímãs e drones) em pontos estratégicos do mapa. São 5 ondas, cada uma mais rápida e com eventos especiais.
+São 3 cenas progressivas. Ao entrar em cada uma, o jogador é congelado durante um briefing com contagem regressiva para memorizar o protocolo. Depois, precisa agir rápido: interagir com os objetos certos, na ordem certa, ou recomeçar o treinamento desde o início.
 
 ### Objetivo educacional
 
-Ensinar a separação correta do lixo segundo o padrão brasileiro de coleta seletiva (CONAMA):
-
-- 🟢 Vidro (verde) — garrafas, potes, frascos
-- 🔴 Plástico (vermelho) — garrafas, sacolas, embalagens
-- 🔵 Papel (azul) — jornais, caixas, cadernos
-- 🟡 Metal (amarelo) — latas, tampas, alumínio
+Ensinar e fixar protocolos básicos de primeiros socorros através da repetição sob pressão de tempo, simulando a urgência de uma situação real de resgate — onde a ordem das ações certas pode ser a diferença entre salvar ou não a vítima.
 
 ## 🕹️ Como jogar
 
 | Ação | Controle |
 |---|---|
-| Mover | A / D ou setas |
-| Pegar lixo mais próximo | Espaço ou E (mão vazia) |
-| Entregar na lixeira | Espaço ou E (carregando, perto da lixeira) |
-| Iniciar a onda | Enter ou botão COMEÇAR ONDA |
-| Abrir/fechar a loja | Tab ou botão LOJA |
-| Selecionar unidade | 1 Coletor · 2 Ímã · 3 Drone |
-| Posicionar unidade | clicar no mapa (fase de preparação) |
-| Ver tutorial | botão i (canto inferior esquerdo) |
+| Mover | WASD ou setas |
+| Olhar em volta | Mouse |
+| Realizar ação de resgate / interagir | E |
+| Alternar Modo Memória / Modo Presente | Q |
 
-> A entrega na lixeira errada descarta o lixo (-20 pontos, mas libera a mão) — pode ser usado como estratégia para se livrar de um item quase grudando.
+> No Modo Memória, pistas escondidas ficam visíveis para ajudar a relembrar o protocolo — mas as paredes avançam mais rápido enquanto o modo estiver ativo. É um trade-off entre informação e tempo.
 
-## 🎲 Elementos do design (sorteados — Grupo 05)
+## 🎲 Elementos do design
 
 | Elemento | Valor | Como aparece no jogo |
 |---|---|---|
-| Gênero | Action | ritmo rápido, lixo caindo em tempo real |
-| Tema | Sticky | lixo gruda no chão após 5s (4 estágios + mancha tóxica) |
-| Interação | Defend | defender a saúde da cidade (100% → 0) |
-| Forma | Vertical Scroller | lixo cai de cima para baixo |
-| Mecânica 1 | Pick up and deliver | coletar e entregar na lixeira correta |
-| Mecânica 2 | Simultaneous action | vários lixos ao mesmo tempo + unidades em paralelo |
-| Mecânica 3 | Secret unit deployment | comprar e posicionar unidades antes da onda |
+| Gênero | Survival / Puzzle | corrida contra o tempo para completar o protocolo |
+| Tema | Enclosing space | as paredes da sala se fecham progressivamente até esmagar o jogador |
+| Interação | Memorize & execute | memorizar o protocolo no briefing e executá-lo na ordem certa |
+| Forma | First person | exploração e interação em primeira pessoa |
+| Mecânica 1 | Ordered interaction | cada ação de resgate só pode ser feita no momento certo da sequência |
+| Mecânica 2 | Limited memory | pistas (textos) aparecem e desaparecem, forçando a memorização |
+| Mecânica 3 | Risk/reward mode switch | Modo Memória revela pistas escondidas, mas acelera as paredes |
 
 ## ✨ Principais sistemas
 
-- 5 ondas progressivas com eventos nomeados (Chuva de Plástico, Tempestade de Metal, Invasão de Vidros, Semana da Reciclagem)
-- Economia de moedas + loja de 3 tipos de unidade (Coletor / Ímã de Metal / Drone Ambiental)
-- Saúde da cidade como condição de derrota
-- Combo / multiplicador (até 5×) e lixo dourado (bônus 3×)
-- Power-ups (Limpeza, Câmera Lenta, Anti-Poluição)
-- Áudio e arte 100% procedurais (sem assets externos)
+- 3 cenas/salas progressivas, cada uma com seu próprio protocolo de resgate
+- Briefing com contagem regressiva e congelamento do jogador ([GameManager.cs](Assets/Scripts/GameManager.cs))
+- Paredes que se fecham e reiniciam a sala em caso de esmagamento ([EnclosingRoom.cs](Assets/Scripts/EnclosingRoom.cs))
+- Sequência de ações ordenadas, com falha e reinício do treinamento ao errar a ordem ([RescueSequence.cs](Assets/Scripts/RescueSequence.cs), [InteractionStep.cs](Assets/Scripts/InteractionStep.cs))
+- Modo Memória com custo de risco (paredes mais rápidas) ([ModeSwitcher.cs](Assets/Scripts/ModeSwitcher.cs))
+- Pistas com "amnésia": aparecem e somem após alguns segundos ([FadingClue.cs](Assets/Scripts/FadingClue.cs))
+- Terminal de quiz com perguntas educacionais de múltipla escolha ([PuzzleTerminal.cs](Assets/Scripts/PuzzleTerminal.cs))
+- Teleportes que liberam o acesso à próxima sala após o desafio ser concluído ([Teleporter.cs](Assets/Scripts/Teleporter.cs))
 
 ## 🛠️ Tecnologia
 
-- Unity 6 (6000.5.0f1) · pipeline URP
-- DOTween (animações)
-- Toda a cena é construída por código (`GameBootstrap.cs`) — não há montagem manual no Inspector
-- Arte e áudio gerados proceduralmente em runtime
-- Estilo visual: neo-brutalismo
+- Unity, controle em primeira pessoa com `CharacterController` ([PlayerController.cs](Assets/Scripts/PlayerController.cs))
+- UI nativa do Unity (`UnityEngine.UI`) para mensagens, briefing e painel de vitória
+- Cena montada no editor ([SampleScene.unity](Assets/Scenes/SampleScene.unity)), com scripts atribuídos via Inspector
 
 ## ▶️ Como rodar no editor
 
-1. Abrir o projeto no Unity 6
-2. Menu **EcoDefender → Create Game Scene** (cria `Assets/Scenes/GameScene.unity`)
-3. Abrir a cena e apertar Play
-
-## 🌐 Jogar online
-
-▶️ Jogue agora no navegador: https://yago-braga.itch.io/ecodefenders
+1. Abrir o projeto no Unity
+2. Abrir a cena [Assets/Scenes/SampleScene.unity](Assets/Scenes/SampleScene.unity)
+3. Apertar Play
