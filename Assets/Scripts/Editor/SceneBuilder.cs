@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEditor;
 using UnityEngine.UI;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 // Gera o jogo completo "Resgate da Memória — Treinamento de Primeiros Socorros".
 //
@@ -78,11 +80,14 @@ public static class SceneBuilder
         EnsureTag("MemoryEcho");
         EnsureTag("Player");
 
-        // ---- Névoa: esconde as outras salas e dá clima de "memória apagada" ----
+        // ---- Névoa: clima de "memória apagada", mas leve o bastante para enxergar
+        //      a sala. As salas vizinhas já ficam escondidas pela casca de paredes/teto,
+        //      então a névoa não precisa ser densa (antes engolia o cenário inteiro). ----
         RenderSettings.fog = true;
-        RenderSettings.fogMode = FogMode.ExponentialSquared;
-        RenderSettings.fogColor = new Color(0.05f, 0.06f, 0.09f);
-        RenderSettings.fogDensity = 0.045f;
+        RenderSettings.fogMode = FogMode.Linear;
+        RenderSettings.fogColor = new Color(0.08f, 0.10f, 0.15f);
+        RenderSettings.fogStartDistance = 12f;
+        RenderSettings.fogEndDistance = 55f;
 
         // ---- Jogador ----
         GameObject player = GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -101,19 +106,27 @@ public static class SceneBuilder
         if (camObj.GetComponent<AudioListener>() == null) camObj.AddComponent<AudioListener>();
         Camera cam = camObj.GetComponent<Camera>();
         cam.clearFlags = CameraClearFlags.SolidColor;
-        cam.backgroundColor = new Color(0.05f, 0.06f, 0.09f);
+        cam.backgroundColor = new Color(0.08f, 0.10f, 0.15f);
+        SetupPostProcessing(cam); // bloom, tonemapping, vinheta, antialiasing
 
         var pc = player.AddComponent<PlayerController>();
         pc.cameraTransform = camObj.transform;
 
-        // ---- Luz global fraca ----
+        // ---- Luz principal (sol/teto) ----
         GameObject lightObj = GameObject.Find("Directional Light");
         if (lightObj != null)
         {
             Light dl = lightObj.GetComponent<Light>();
-            dl.color = new Color(0.7f, 0.8f, 1f);
-            dl.intensity = 0.4f;
+            dl.color = new Color(0.85f, 0.88f, 1f);
+            dl.intensity = 0.9f;
+            dl.shadows = LightShadows.Soft;
+            dl.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
         }
+
+        // Luz ambiente azulada suave: preenche as sombras sem estourar a cena,
+        // deixando o cenário visível e com mais "profundidade".
+        RenderSettings.ambientMode = AmbientMode.Flat;
+        RenderSettings.ambientLight = new Color(0.17f, 0.19f, 0.25f);
 
         // ---- GameSystems ----
         GameObject systems = new GameObject("GameSystems");
@@ -156,6 +169,7 @@ public static class SceneBuilder
         floor.transform.position = new Vector3(cx, 0, 0);
         floor.transform.localScale = new Vector3(ROOM_SIZE / 10f, 1, ROOM_SIZE / 10f);
         Paint(floor, new Color(0.16f, 0.16f, 0.19f));
+        SetSmoothness(floor, 0.3f); // leve brilho de "concreto polido", pega os reflexos das luzes
         floor.transform.SetParent(room.transform);
 
         // ---- Teto ----
@@ -217,8 +231,10 @@ public static class SceneBuilder
         brief.seconds = 8f;
         briefZone.transform.SetParent(room.transform);
 
-        // Eco do briefing no mundo (Modo Memória [Q])
-        GameObject echo = CreateText("Briefing" + suf + "_Echo", content.briefing, new Vector3(cx, 2.2f, 2.05f), 0.28f, new Color(0.45f, 0.65f, 1f));
+        // Eco do briefing no mundo (Modo Memória [Q]): fica na PAREDE DO FUNDO (sul),
+        // atrás do ponto de spawn — não mais flutuando no meio da sala nem junto do título.
+        GameObject echo = CreateText("Briefing" + suf + "_Echo", content.briefing, new Vector3(cx, 1.9f, -14.4f), 0.28f, new Color(0.45f, 0.65f, 1f));
+        echo.transform.rotation = Quaternion.Euler(0f, 180f, 0f); // girada para ser lida de dentro da sala
         echo.tag = "MemoryEcho";
         echo.transform.SetParent(room.transform);
 
@@ -340,8 +356,8 @@ public static class SceneBuilder
         markerObj.transform.localPosition = new Vector3(0, zoneSize > 5f ? 3.6f : 2.6f, 0);
         TextMesh marker = markerObj.AddComponent<TextMesh>();
         marker.text = "!";
-        marker.characterSize = 0.5f;
-        marker.fontSize = 60;
+        marker.characterSize = 0.5f / 4f; // alta resolução (ver CreateText): nítido, sem pixelar
+        marker.fontSize = 60 * 4;
         marker.anchor = TextAnchor.MiddleCenter;
         marker.color = new Color(1f, 0.85f, 0.2f);
 
@@ -748,8 +764,11 @@ public static class SceneBuilder
         obj.transform.position = pos;
         TextMesh tm = obj.AddComponent<TextMesh>();
         tm.text = text;
-        tm.characterSize = charSize;
-        tm.fontSize = 48;
+        // Renderiza a fonte em alta resolução (fontSize grande) e encolhe o caractere
+        // na mesma proporção: mesmo tamanho na tela, porém sem pixelar.
+        const int sharpness = 4;
+        tm.characterSize = charSize / sharpness;
+        tm.fontSize = 48 * sharpness;
         tm.anchor = TextAnchor.MiddleCenter;
         tm.alignment = TextAlignment.Center;
         tm.color = color;
@@ -858,6 +877,44 @@ public static class SceneBuilder
         winText.text = "Memória de Gênio,\nVocê venceu";
         winPanel.SetActive(false);
         gameManager.winPanel = winPanel;
+    }
+
+    // Liga o pós-processamento do URP reaproveitando o perfil que já existe no projeto
+    // (Assets/Settings/SampleSceneProfile.asset: Bloom + Tonemapping + Vignette).
+    // É o acabamento "de jogo" com maior impacto visual e nenhum asset novo.
+    static void SetupPostProcessing(Camera cam)
+    {
+        UniversalAdditionalCameraData data = cam.GetUniversalAdditionalCameraData();
+        if (data != null)
+        {
+            data.renderPostProcessing = true;
+            data.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+            data.antialiasingQuality = AntialiasingQuality.High;
+        }
+
+        VolumeProfile profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>("Assets/Settings/SampleSceneProfile.asset");
+        if (profile == null)
+        {
+            Debug.LogWarning("Perfil de pos-processamento nao encontrado em Assets/Settings/SampleSceneProfile.asset");
+            return;
+        }
+
+        // Reaproveita o "Global Volume" que cenas URP já criam; senão, cria um.
+        GameObject volObj = GameObject.Find("Global Volume");
+        if (volObj == null) volObj = new GameObject("Global Volume");
+        Volume vol = volObj.GetComponent<Volume>();
+        if (vol == null) vol = volObj.AddComponent<Volume>();
+        vol.isGlobal = true;
+        vol.priority = 1f;
+        vol.sharedProfile = profile;
+    }
+
+    // Dá um pouco de brilho especular a uma superfície (material URP/Lit).
+    static void SetSmoothness(GameObject go, float smoothness)
+    {
+        Renderer r = go.GetComponent<Renderer>();
+        if (r != null && r.sharedMaterial != null && r.sharedMaterial.HasProperty("_Smoothness"))
+            r.sharedMaterial.SetFloat("_Smoothness", smoothness);
     }
 
     static void EnsureTag(string tag)
