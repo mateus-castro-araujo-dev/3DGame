@@ -41,3 +41,7 @@ crashlytics-build.properties
 
 # Asset store tools
 /[Aa]ssets/AssetStoreTools*
+
+# Builds zipados e projeto vazio acidental
+*.zip
+/Rescue Protocol/

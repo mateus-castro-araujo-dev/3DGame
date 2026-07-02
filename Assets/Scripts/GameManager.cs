@@ -19,8 +19,17 @@ public class GameManager : MonoBehaviour
     public GameObject briefingPanel;
     public Text briefingText;
     public Text countdownText;
+    public Text timerText;        // cronômetro grande durante a sala
+    public GameObject memoryPanel; // overlay escuro do Modo Memória [Q]
+    public Text memoryText;        // protocolo relembrado na tela
     public GameObject winPanel;
     public Image flashImage; // flash azul ao teletransportar
+
+    [Tooltip("Tempo (segundos) para concluir cada sala antes da vítima morrer")]
+    public float roomTimeLimit = 15f;
+    float timeLeft;
+    bool timerRunning;
+    string currentProtocol = ""; // texto do protocolo da sala atual (mostrado no [Q])
 
     [Tooltip("Distância entre os centros das salas no eixo X (igual ao ROOM_SPACING do SceneBuilder)")]
     public float roomSpacing = 80f;
@@ -101,6 +110,58 @@ public class GameManager : MonoBehaviour
     void Update()
     {
         UpdateLabelVisibility();
+        TickTimer();
+        UpdateMemoryPanel();
+    }
+
+    // Modo Memória [Q]: mostra o protocolo na TELA (painel escuro), não mais na parede.
+    void UpdateMemoryPanel()
+    {
+        if (memoryPanel == null) return;
+        bool show = ModeSwitcher.Instance != null && ModeSwitcher.Instance.InMemoryMode && !IsBriefing && !failing;
+        if (memoryPanel.activeSelf != show)
+        {
+            if (show && memoryText != null) memoryText.text = currentProtocol;
+            memoryPanel.SetActive(show);
+        }
+    }
+
+    // ---- Cronômetro de 15 s por sala ----
+    // Começa quando o briefing termina; se zerar, a vítima morre e o treinamento
+    // reinicia. É parado quando o resgate da sala é concluído.
+    public void StartTimer()
+    {
+        timeLeft = roomTimeLimit;
+        timerRunning = true;
+        UpdateTimerUI();
+    }
+
+    public void StopTimer()
+    {
+        timerRunning = false;
+        if (timerText != null) timerText.text = "";
+    }
+
+    void TickTimer()
+    {
+        if (!timerRunning || IsBriefing || failing) return;
+        timeLeft -= Time.deltaTime;
+        if (timeLeft <= 0f)
+        {
+            timeLeft = 0f;
+            timerRunning = false;
+            UpdateTimerUI();
+            FailAndRestart("A VÍTIMA MORREU!\n\nO tempo de 15 segundos acabou.\n\nNum resgate real, cada segundo conta.\nSeja mais rápido na próxima vez!");
+            return;
+        }
+        UpdateTimerUI();
+    }
+
+    void UpdateTimerUI()
+    {
+        if (timerText == null) return;
+        timerText.text = Mathf.CeilToInt(timeLeft) + "s";
+        timerText.color = timeLeft <= 5f ? new Color(1f, 0.3f, 0.25f) : Color.white;
     }
 
     void SetObjective()
@@ -120,6 +181,7 @@ public class GameManager : MonoBehaviour
     // Para apenas o briefing anterior (não o flash de teleporte, que toca por cima).
     public void StartBriefing(string text, float seconds)
     {
+        currentProtocol = text; // guarda o protocolo desta sala para o Modo Memória [Q]
         if (briefingRoutine != null) StopCoroutine(briefingRoutine);
         briefingRoutine = StartCoroutine(BriefingRoutine(text, seconds));
     }
@@ -148,7 +210,8 @@ public class GameManager : MonoBehaviour
         SetFrozen(false);
         IsBriefing = false;
         SetObjective(); // o "CENA X/3" só aparece depois da contagem
-        ShowMessage("Siga o protocolo na ordem ('!').  [Q] relembra o protocolo (mas acelera as paredes).");
+        StartTimer();   // dispara os 15 s: se zerar, a vítima morre
+        ShowMessage("Siga o protocolo na ordem ('!') antes que o tempo acabe!  [Q] relembra o protocolo.");
     }
 
     void SetFrozen(bool frozen)
@@ -185,6 +248,7 @@ public class GameManager : MonoBehaviour
     IEnumerator FailRoutine(string reason)
     {
         IsBriefing = true; // congela paredes e interações
+        StopTimer();
         SetFrozen(true);
         SetPrompt("");
         if (messageText != null) messageText.text = "";
@@ -203,6 +267,7 @@ public class GameManager : MonoBehaviour
 
     public void Win()
     {
+        StopTimer();
         if (winPanel != null) winPanel.SetActive(true);
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;

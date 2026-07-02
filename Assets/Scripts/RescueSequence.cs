@@ -28,11 +28,10 @@ public class RescueSequence : MonoBehaviour
         {
             if (room != null) room.StopClosing();
             if (exitTeleporter != null) exitTeleporter.Activate();
-            GameManager.Instance.ShowMessage("RESGATE CONCLUÍDO! As paredes pararam. Entre no feixe VERDE para a próxima cena.");
+            GameManager.Instance.StopTimer(); // resgate concluído a tempo: para o cronômetro
+            GameManager.Instance.ShowMessage("RESGATE CONCLUÍDO! Entre no feixe VERDE para a próxima cena.");
         }
-        else
-        {
-            GameManager.Instance.ShowMessage("Próximo passo: " + CurrentHint);
-        }
+        // Não mostra "Próximo passo": lembrar a ordem do protocolo faz parte do desafio
+        // (e o cronômetro no canto superior direito já indica a pressão de tempo).
     }
 }
